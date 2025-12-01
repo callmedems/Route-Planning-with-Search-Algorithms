@@ -20,7 +20,7 @@ def download_map_data():
 
 def extract_node_data(G):
     print("\n" + "="*70)
-    print("TASK 1: COORDINATE TRANSFORMATION")
+    print("COORDINATE TRANSFORMATION")
     print("="*70)
     
     node_ids = list(G.nodes)
@@ -32,7 +32,7 @@ def extract_node_data(G):
 
 def build_kdtree(node_coords):
     print("\n" + "="*70)
-    print("TASK 2: BUILDING KD-TREE")
+    print("BUILDING KD-TREE")
     print("="*70)
     
     points = [tuple(coord) for coord in node_coords]
@@ -86,7 +86,7 @@ def nearest_neighbor_kdtree(kdtree, node_ids, node_coords, query_point):
 
 def search_with_kdtree(kdtree, node_ids, node_coords, test_locations):
     print("\n" + "="*70)
-    print("TASK 3: SEARCHING WITH KD-TREE")
+    print("SEARCHING WITH KD-TREE")
     print("="*70)
     
     results = []
@@ -109,7 +109,7 @@ def search_with_kdtree(kdtree, node_ids, node_coords, test_locations):
 
 def search_brute_force(node_ids, node_coords, test_locations):
     print("\n" + "="*70)
-    print("TASK 4: SEARCHING WITH BRUTE-FORCE")
+    print("SEARCHING WITH BRUTE-FORCE")
     print("="*70)
     
     results = []
@@ -150,14 +150,9 @@ def compare_results(kdtree_results, kdtree_times, bruteforce_results, bruteforce
     
     print(f"\nMatching results: {matches}/{len(kdtree_results)}")
     
-    avg_kdtree = np.mean(kdtree_times)
-    avg_bruteforce = np.mean(bruteforce_times)
-    speedup = avg_bruteforce / avg_kdtree
-    
     print(f"\nKD-tree build time: {build_time:.6f} seconds")
-    print(f"KD-tree avg search: {avg_kdtree:.9f} seconds")
-    print(f"Brute-force avg search: {avg_bruteforce:.9f} seconds")
-    print(f"Speedup: {speedup:.2f}x")
+    print(f"KD-tree avg search: {np.mean(kdtree_times):.9f} seconds")
+    print(f"Brute-force avg search: {np.mean(bruteforce_times):.9f} seconds")
 
 def main():
     print("\nCOMPONENT 1: OPTIMIZED VERTEX SEARCH")
