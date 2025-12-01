@@ -50,26 +50,26 @@ def generate_test_locations():
     print("="*70)
     
     test_locations = [
-        (20.645221, -105.237188),
-        (20.642388, -105.221028),
-        (20.630880, -105.229097),
-        (20.627529, -105.225031),
-        (20.629460, -105.232496),
-        (20.648714, -105.232193),
-        (20.641103, -105.211800),
-        (20.638832, -105.202757),
-        (20.651781, -105.205792),
-        (20.617872, -105.232678),
-        (20.601398, -105.233589),
-        (20.590206, -105.243360),
-        (20.598160, -105.223696),
-        (20.610317, -105.224363),
-        (20.608897, -105.232375),
-        (20.606909, -105.224485),
-        (20.601909, -105.238080),
-        (20.609976, -105.232193),
-        (20.583900, -105.243299),
-        (20.600887, -105.228308)
+        (20.645221, -105.237188, "Location 1"),
+        (20.642388, -105.221028, "Location 2"),
+        (20.630880, -105.229097, "Location 3"),
+        (20.627529, -105.225031, "Location 4"),
+        (20.629460, -105.232496, "Location 5"),
+        (20.648714, -105.232193, "Location 6"),
+        (20.641103, -105.211800, "Location 7"),
+        (20.638832, -105.202757, "Location 8"),
+        (20.651781, -105.205792, "Location 9"),
+        (20.617872, -105.232678, "Location 10"),
+        (20.601398, -105.233589, "Location 11"),
+        (20.590206, -105.243360, "Location 12"),
+        (20.598160, -105.223696, "Location 13"),
+        (20.610317, -105.224363, "Location 14"),
+        (20.608897, -105.232375, "Location 15"),
+        (20.606909, -105.224485, "Location 16"),
+        (20.601909, -105.238080, "Location 17"),
+        (20.609976, -105.232193, "Location 18"),
+        (20.583900, -105.243299, "Location 19"),
+        (20.600887, -105.228308, "Location 20")
     ]
     
     print(f"Loaded {len(test_locations)} coordinates")
@@ -92,7 +92,9 @@ def search_with_kdtree(kdtree, node_ids, node_coords, test_locations):
     results = []
     search_times = []
     
-    for i, (lat, lon) in enumerate(test_locations, 1):
+    for i, location in enumerate(test_locations, 1):
+        lat, lon = location[0], location[1]
+        name = location[2] if len(location) > 2 else f"Location {i}"
         query_point = np.array([lat, lon])
         
         start_time = time.time()
@@ -102,7 +104,7 @@ def search_with_kdtree(kdtree, node_ids, node_coords, test_locations):
         results.append((nearest_node, distance))
         search_times.append(search_time)
         
-        print(f"Location {i:2d}: ({lat:.6f}, {lon:.6f}) → Node {nearest_node}, Time: {search_time:.9f}s")
+        print(f"{name}: ({lat:.6f}, {lon:.6f}) → Node {nearest_node}, Time: {search_time:.9f}s")
     
     print(f"\nAverage time: {np.mean(search_times):.9f} seconds")
     return results, search_times
@@ -115,7 +117,9 @@ def search_brute_force(node_ids, node_coords, test_locations):
     results = []
     search_times = []
     
-    for i, (lat, lon) in enumerate(test_locations, 1):
+    for i, location in enumerate(test_locations, 1):
+        lat, lon = location[0], location[1]
+        name = location[2] if len(location) > 2 else f"Location {i}"
         query_point = np.array([lat, lon])
         
         start_time = time.time()
@@ -135,7 +139,7 @@ def search_brute_force(node_ids, node_coords, test_locations):
         results.append((nearest_node, min_distance))
         search_times.append(search_time)
         
-        print(f"Location {i:2d}: ({lat:.6f}, {lon:.6f}) -> Node {nearest_node}, Time: {search_time:.9f}s")
+        print(f"{name}: ({lat:.6f}, {lon:.6f}) → Node {nearest_node}, Time: {search_time:.9f}s")
     
     print(f"\nAverage time: {np.mean(search_times):.9f} seconds")
     return results, search_times
