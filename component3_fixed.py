@@ -180,7 +180,8 @@ class HospitalRoutePlanner:
             if region.contains(p):
                 return i
         
-        # Fallback: hospital cuyo centro proyectado está más cerca
+        # Si no está en ninguna región (punto muy cercano a límite),
+        # usar distancia a los centros Voronoi
         min_dist = float('inf')
         nearest_idx = 0
         for i, h_node in enumerate(self.hospital_nodes):
@@ -191,6 +192,7 @@ class HospitalRoutePlanner:
                 min_dist = dist
                 nearest_idx = i
         
+        print(f"  Node {node_id} not in any region, using fallback (distance-based).")
         return nearest_idx
     
     # ---------------------------------------------------------
@@ -199,16 +201,21 @@ class HospitalRoutePlanner:
     def find_nearest_hospital(self, query_lat, query_lon):
         """
         Dado (lat, lon), determina:
-        - el nodo más cercano
+        - el nodo más cercano en la red
         - la región Voronoi a la que pertenece
         - el hospital (nodo) asociado a esa región
         """
-        # Nodo más cercano en la red
+        # Nodo más cercano en la red (en coordenadas geográficas)
         query_node = ox.distance.nearest_nodes(self.G, query_lon, query_lat)
+        print(f"  Query location (lat={query_lat:.6f}, lon={query_lon:.6f})")
+        print(f"  Nearest road node: {query_node}")
         
-        # Región Voronoi para ese nodo
+        # Región Voronoi para ese nodo (el nodo está en la red proyectada)
         region_idx = self._get_region_for_node(query_node)
         hospital_node = self.hospital_nodes[region_idx]
+        
+        print(f"  Voronoi region: {region_idx + 1}")
+        print(f"  Assigned hospital: Hospital {region_idx + 1} (Node {hospital_node})")
         
         return region_idx, hospital_node, query_node
     
@@ -220,12 +227,12 @@ class HospitalRoutePlanner:
         Compute the route from a query location to the nearest hospital 
         (according to Voronoi region) using A* on the projected graph.
         """
-        print(f"\nComputing route from ({query_lat:.6f}, {query_lon:.6f})...")
+        print(f"\n{'='*60}")
+        print(f"Computing route from ({query_lat:.6f}, {query_lon:.6f})")
+        print(f"{'='*60}")
         
         # Usar Voronoi para decidir el hospital
         hospital_idx, hospital_node, query_node = self.find_nearest_hospital(query_lat, query_lon)
-        print(f"Query nearest node: {query_node}")
-        print(f"Nearest hospital by Voronoi: Hospital {hospital_idx + 1} (Node {hospital_node})")
         
         # A* en grafo proyectado
         def heuristic(u, v):
@@ -238,10 +245,13 @@ class HospitalRoutePlanner:
                                   heuristic=heuristic, weight='length')
             route_length = nx.path_weight(self.G_proj, route, weight='length')
             
-            print(f"Route found: {len(route)} nodes, {route_length:.2f} meters")
+            print(f"\nRoute found successfully!")
+            print(f"  - Number of nodes: {len(route)}")
+            print(f"  - Distance: {route_length:.2f} meters ({route_length/1000:.2f} km)")
+            print(f"  - Segments: {len(route) - 1}")
             return route, hospital_idx, route_length
         except nx.NetworkXNoPath:
-            print("No path found between query location and hospital!")
+            print("\nNo path found between query location and hospital!")
             return None, hospital_idx, None
     
     # ---------------------------------------------------------
@@ -254,11 +264,19 @@ class HospitalRoutePlanner:
         ox.plot_graph(self.G_proj, ax=ax, node_size=0, edge_color="lightgray",
                       edge_linewidth=0.5, show=False, close=False)
 
-        # Polígonos Voronoi
-        for poly in self.voronoi_regions:
+        # Generate unique colors for each Voronoi region
+        num_regions = len(self.voronoi_regions)
+        colors = plt.cm.get_cmap('tab20')(np.linspace(0, 1, num_regions))
+        
+        # Polígonos Voronoi with unique colors
+        for i, poly in enumerate(self.voronoi_regions):
             if poly.geom_type == "Polygon":
                 x, y = poly.exterior.xy
-                ax.fill(x, y, alpha=0.25)
+                ax.fill(x, y, alpha=0.25, color=colors[i], label=f'Hospital {i+1}')
+            elif poly.geom_type == "MultiPolygon":
+                for sub_poly in poly.geoms:
+                    x, y = sub_poly.exterior.xy
+                    ax.fill(x, y, alpha=0.25, color=colors[i])
 
         # Hospitales
         for n in self.hospital_nodes:
@@ -267,6 +285,7 @@ class HospitalRoutePlanner:
                        s=100, c="red", marker="+")
 
         plt.title("Voronoi Partition (Hospitals)")
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
         plt.tight_layout()
         return fig, ax
     
@@ -332,11 +351,6 @@ if __name__ == "__main__":
     route, hospital_idx, route_length = planner.compute_route(query_lat, query_lon)
     
     if route:
-        print(f"\nRoute Summary:")
-        print(f"- Distance: {route_length:.2f} meters ({route_length/1000:.2f} km)")
-        print(f"- Number of segments: {len(route) - 1}")
-        
-        # Visualize the route
         print("\nVisualizing route...")
         fig2, ax2 = planner.visualize_route(route, query_lat, query_lon, hospital_idx)
         plt.savefig('route_to_hospital.png', dpi=150, bbox_inches='tight')
@@ -355,5 +369,5 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print("Route planning system ready!")
     print("Use find_route_to_hospital(lat, lon) to find routes from any location")
-    print("="*60)
+   
 
