@@ -4,3 +4,4 @@ scipy
 geopy
 networkx
 matplotlib
+simpleai

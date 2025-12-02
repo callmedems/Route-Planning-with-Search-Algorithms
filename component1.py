@@ -104,7 +104,7 @@ def search_with_kdtree(kdtree, node_ids, node_coords, test_locations):
         results.append((nearest_node, distance))
         search_times.append(search_time)
         
-        print(f"{name}: ({lat:.6f}, {lon:.6f}) → Node {nearest_node}, Time: {search_time:.9f}s")
+        print(f"{name}: ({lat:.6f}, {lon:.6f}) -> Node {nearest_node}, Time: {search_time:.9f}s")
     
     print(f"\nAverage time: {np.mean(search_times):.9f} seconds")
     return results, search_times
@@ -139,7 +139,7 @@ def search_brute_force(node_ids, node_coords, test_locations):
         results.append((nearest_node, min_distance))
         search_times.append(search_time)
         
-        print(f"{name}: ({lat:.6f}, {lon:.6f}) → Node {nearest_node}, Time: {search_time:.9f}s")
+        print(f"{name}: ({lat:.6f}, {lon:.6f}) -> Node {nearest_node}, Time: {search_time:.9f}s")
     
     print(f"\nAverage time: {np.mean(search_times):.9f} seconds")
     return results, search_times
