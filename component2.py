@@ -2,10 +2,8 @@ import osmnx as ox
 import networkx as nx
 import numpy as np
 import time
-from collections import deque
-import heapq
 import geopy.distance
-import matplotlib.pyplot as plt
+from simpleai.search import SearchProblem, breadth_first, depth_first, uniform_cost, iterative_limited_depth_first, astar
 
 LOCATION = 'Puerto Vallarta, Jalisco, México'
 DISTANCE = 5000
@@ -112,213 +110,73 @@ def select_node_pairs(G, min_dist, max_dist, num_pairs=5):
     
     return pairs
 
-def visualize_node_pairs(G, pairs, category_name):
-    fig, ax = ox.plot_graph(G, node_size=0, edge_color='#CCCCCC', 
-                            edge_linewidth=0.5, bgcolor='white', 
-                            show=False, close=False)
+class RoutePlanningProblem(SearchProblem):
+    def __init__(self, G, start, goal):
+        self.G = G
+        self.goal_node = goal
+        super().__init__(initial_state=start)
+        self.nodes_explored = 0
     
-    colors = ['red', 'blue', 'green', 'orange', 'purple']
+    def actions(self, state):
+        return list(self.G.successors(state))
     
-    for idx, pair in enumerate(pairs):
-        node1, node2, dist = pair[0], pair[1], pair[2]
-        name1 = pair[3] if len(pair) > 3 else f"N{idx*2}"
-        name2 = pair[4] if len(pair) > 4 else f"N{idx*2+1}"
-        
-        y1, x1 = G.nodes[node1]['y'], G.nodes[node1]['x']
-        y2, x2 = G.nodes[node2]['y'], G.nodes[node2]['x']
-        
-        color = colors[idx % len(colors)]
-        
-        ax.scatter(x1, y1, c=color, s=200, marker='o', zorder=5, edgecolors='black', linewidths=2)
-        ax.scatter(x2, y2, c=color, s=200, marker='s', zorder=5, edgecolors='black', linewidths=2)
-        
-        ax.text(x1, y1, f" {name1}", fontsize=8, ha='left', va='bottom', 
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
-        ax.text(x2, y2, f" {name2}", fontsize=8, ha='left', va='top',
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
-        
-        ax.plot([x1, x2], [y1, y2], color=color, linewidth=2, alpha=0.5, linestyle='--', zorder=3)
+    def result(self, state, action):
+        self.nodes_explored += 1
+        return action
     
-    plt.title(f'{category_name} - Node Pairs Visualization', fontsize=14, fontweight='bold')
+    def is_goal(self, state):
+        return state == self.goal_node
     
-    filename = f"node_pairs_{category_name.lower().replace(' ', '_')}.png"
-    plt.savefig(filename, dpi=300, bbox_inches='tight')
-    print(f"\nMap saved as '{filename}'")
-    plt.close()
+    def cost(self, state, action, state2):
+        edge_data = self.G.get_edge_data(state, state2)
+        if edge_data:
+            return edge_data[0].get('length', 1)
+        return 1
+    
+    def heuristic(self, state):
+        coord1 = (self.G.nodes[state]['y'], self.G.nodes[state]['x'])
+        coord2 = (self.G.nodes[self.goal_node]['y'], self.G.nodes[self.goal_node]['x'])
+        return geopy.distance.distance(coord1, coord2).meters
 
-def bfs(G, start, goal):
-    queue = deque([start])
-    came_from = {start: None}
-    nodes_explored = 0
-    
-    while queue:
-        current = queue.popleft()
-        nodes_explored += 1
-        
-        if current == goal:
-            break
-        
-        for neighbor in G.successors(current):
-            if neighbor not in came_from:
-                queue.append(neighbor)
-                came_from[neighbor] = current
-    
-    if goal not in came_from:
-        return None, nodes_explored
-    
-    path = []
-    current = goal
-    while current is not None:
-        path.append(current)
-        current = came_from[current]
-    path.reverse()
-    
-    return path, nodes_explored
+def run_bfs(G, start, goal):
+    problem = RoutePlanningProblem(G, start, goal)
+    result = breadth_first(problem, graph_search=True)
+    if result:
+        path = [node for node, action in result.path()]
+        return path, problem.nodes_explored
+    return None, problem.nodes_explored
 
-def dfs(G, start, goal):
-    stack = [start]
-    came_from = {start: None}
-    nodes_explored = 0
-    
-    while stack:
-        current = stack.pop()
-        nodes_explored += 1
-        
-        if current == goal:
-            break
-        
-        for neighbor in G.successors(current):
-            if neighbor not in came_from:
-                stack.append(neighbor)
-                came_from[neighbor] = current
-    
-    if goal not in came_from:
-        return None, nodes_explored
-    
-    path = []
-    current = goal
-    while current is not None:
-        path.append(current)
-        current = came_from[current]
-    path.reverse()
-    
-    return path, nodes_explored
+def run_dfs(G, start, goal):
+    problem = RoutePlanningProblem(G, start, goal)
+    result = depth_first(problem, graph_search=True)
+    if result:
+        path = [node for node, action in result.path()]
+        return path, problem.nodes_explored
+    return None, problem.nodes_explored
 
-def ucs(G, start, goal):
-    pq = [(0, start)]
-    came_from = {start: None}
-    cost_so_far = {start: 0}
-    nodes_explored = 0
-    
-    while pq:
-        current_cost, current = heapq.heappop(pq)
-        nodes_explored += 1
-        
-        if current == goal:
-            break
-        
-        for neighbor in G.successors(current):
-            edge_data = G.get_edge_data(current, neighbor)
-            if edge_data:
-                edge_cost = edge_data[0].get('length', 1)
-                new_cost = cost_so_far[current] + edge_cost
-                
-                if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
-                    cost_so_far[neighbor] = new_cost
-                    heapq.heappush(pq, (new_cost, neighbor))
-                    came_from[neighbor] = current
-    
-    if goal not in came_from:
-        return None, nodes_explored
-    
-    path = []
-    current = goal
-    while current is not None:
-        path.append(current)
-        current = came_from[current]
-    path.reverse()
-    
-    return path, nodes_explored
+def run_ucs(G, start, goal):
+    problem = RoutePlanningProblem(G, start, goal)
+    result = uniform_cost(problem, graph_search=True)
+    if result:
+        path = [node for node, action in result.path()]
+        return path, problem.nodes_explored
+    return None, problem.nodes_explored
 
-def dfs_limited(G, start, goal, depth_limit):
-    stack = [(start, 0)]
-    came_from = {start: None}
-    nodes_explored = 0
-    
-    while stack:
-        current, depth = stack.pop()
-        nodes_explored += 1
-        
-        if current == goal:
-            path = []
-            node = goal
-            while node is not None:
-                path.append(node)
-                node = came_from[node]
-            path.reverse()
-            return path, nodes_explored
-        
-        if depth < depth_limit:
-            for neighbor in G.successors(current):
-                if neighbor not in came_from:
-                    stack.append((neighbor, depth + 1))
-                    came_from[neighbor] = current
-    
-    return None, nodes_explored
+def run_iddfs(G, start, goal):
+    problem = RoutePlanningProblem(G, start, goal)
+    result = iterative_limited_depth_first(problem, graph_search=True)
+    if result:
+        path = [node for node, action in result.path()]
+        return path, problem.nodes_explored
+    return None, problem.nodes_explored
 
-def iddfs(G, start, goal, max_depth=50):
-    total_nodes_explored = 0
-    
-    for depth in range(max_depth):
-        result, nodes = dfs_limited(G, start, goal, depth)
-        total_nodes_explored += nodes
-        
-        if result is not None:
-            return result, total_nodes_explored
-    
-    return None, total_nodes_explored
-
-def heuristic(G, node, goal):
-    coord1 = (G.nodes[node]['y'], G.nodes[node]['x'])
-    coord2 = (G.nodes[goal]['y'], G.nodes[goal]['x'])
-    return geopy.distance.distance(coord1, coord2).meters
-
-def astar(G, start, goal):
-    pq = [(0, start)]
-    came_from = {start: None}
-    cost_so_far = {start: 0}
-    nodes_explored = 0
-    
-    while pq:
-        _, current = heapq.heappop(pq)
-        nodes_explored += 1
-        
-        if current == goal:
-            break
-        
-        for neighbor in G.successors(current):
-            edge_data = G.get_edge_data(current, neighbor)
-            if edge_data:
-                edge_cost = edge_data[0].get('length', 1)
-                new_cost = cost_so_far[current] + edge_cost
-                
-                if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
-                    cost_so_far[neighbor] = new_cost
-                    priority = new_cost + heuristic(G, neighbor, goal)
-                    heapq.heappush(pq, (priority, neighbor))
-                    came_from[neighbor] = current
-    
-    if goal not in came_from:
-        return None, nodes_explored
-    
-    path = []
-    current = goal
-    while current is not None:
-        path.append(current)
-        current = came_from[current]
-    path.reverse()
-    
-    return path, nodes_explored
+def run_astar(G, start, goal):
+    problem = RoutePlanningProblem(G, start, goal)
+    result = astar(problem, graph_search=True)
+    if result:
+        path = [node for node, action in result.path()]
+        return path, problem.nodes_explored
+    return None, problem.nodes_explored
 
 def get_path_length(G, path):
     if path is None or len(path) < 2:
@@ -338,11 +196,11 @@ def run_experiment(G, pairs, category_name):
     print("="*70)
     
     algorithms = {
-        'BFS': bfs,
-        'DFS': dfs,
-        'UCS': ucs,
-        'IDDFS': iddfs,
-        'A*': astar
+        'BFS': run_bfs,
+        'DFS': run_dfs,
+        'UCS': run_ucs,
+        'IDDFS': run_iddfs,
+        'A*': run_astar
     }
     
     results = {name: [] for name in algorithms}
@@ -401,28 +259,17 @@ def main():
     G = download_map_data()
     
     short_pairs = select_node_pairs(G, 0, 1000, num_pairs=5)
-    visualize_node_pairs(G, short_pairs, "SHORT DISTANCES")
     short_results = run_experiment(G, short_pairs, "SHORT DISTANCES (< 1000m)")
     analyze_results(short_results, "SHORT")
     
     medium_pairs = select_node_pairs(G, 1000, 5000, num_pairs=5)
-    visualize_node_pairs(G, medium_pairs, "MEDIUM DISTANCES")
     medium_results = run_experiment(G, medium_pairs, "MEDIUM DISTANCES (1000-5000m)")
     analyze_results(medium_results, "MEDIUM")
     
     long_pairs = select_node_pairs(G, 5000, 15000, num_pairs=5)
-    visualize_node_pairs(G, long_pairs, "LONG DISTANCES")
     long_results = run_experiment(G, long_pairs, "LONG DISTANCES (> 5000m)")
     analyze_results(long_results, "LONG")
-    
-    print("\n" + "="*70)
-    print("RECOMMENDATION")
-    print("="*70)
-    print("A* is recommended because:")
-    print("• Finds optimal paths")
-    print("• Faster than UCS")
-    print("• Explores fewer nodes")
-    print("• Scales well")
+
     
     return G
 

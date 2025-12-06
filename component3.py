@@ -124,7 +124,7 @@ class RoutePlanner:
         self.set_nodes()
 
     def set_nodes(self):
-        print("\nFinding nearest nodes for hospitals")
+        print("\nFinding nearest nodes for hospitals: ")
         
         for i, (lat, lon) in enumerate(self.hospital_coords):
             nearest_node = ox.distance.nearest_nodes(self.G, lon, lat)
