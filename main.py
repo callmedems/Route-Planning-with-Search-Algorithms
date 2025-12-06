@@ -20,6 +20,10 @@ from component2 import (
     run_astar,
     get_path_length
 )
+from component3 import (
+    RoutePlanner
+
+)
 import time
 
 LOCATION = 'Puerto Vallarta, Jalisco, México'
@@ -130,7 +134,7 @@ class RouteMapApp:
                 nearest_node = self.node_ids[i]
                 break
         
-        print(f"✓ Found node {nearest_node}")
+        print(f"  Found node {nearest_node}")
         print(f"  Distance: {distance:.6f} degrees")
         print(f"  Search time: {kd_time:.9f}s")
         
@@ -166,15 +170,61 @@ class RouteMapApp:
         
         if path:
             path_length = get_path_length(self.G, path)
-            print(f"\n✓ Route found!")
+            print(f"\nRoute found!")
             print(f"  Nodes in path: {len(path)}")
             print(f"  Path length: {path_length:.1f}m")
             print(f"  Nodes explored: {nodes_explored}")
             print(f"  Time: {elapsed:.6f}s")
             return path
         else:
-            print("\n✗ No route found")
+            print("\nNo route found")
             return None
+        
+    def component3_demo(self):
+        print("\n" + "="*70)
+        print("COMPONENT 3: HOSPITAL SEARCH ROUTE PLANNING")
+        print("="*70)
+
+        planner = RoutePlanner()
+        planner.create_voronoi_partition()
+
+        #Show voronoi partitions
+        planner.visualize_voronoi(figsize=(16, 14))
+    
+        print("\nType 'quit' to exit\n")
+
+        while True:
+            try:
+                user_input = input("\nEnter coordinates (lat, lon) or 'quit': ").strip()
+
+                if user_input.lower() in ['quit', 'exit', 'q']:
+                    print("\nExiting Component 3...")
+                    break
+
+                parts = user_input.split(',')
+                if len(parts) != 2:
+                    print("Error: Please enter exactly 2 values (latitude, longitude)")
+                    continue
+
+                lat = float(parts[0].strip())
+                lon = float(parts[1].strip())
+
+                if not (20.55 <= lat <= 20.75 and -105.30 <= lon <= -105.15):
+                    print("Warning: Coordinates outside Puerto Vallarta area")
+                    print("Continuing anyway...")
+
+                route, hospital_idx, route_length, query_node = planner.find_route(lat, lon) 
+                planner.visualize_route(route, lat, lon, hospital_idx, query_node, save_path='route.png')
+            
+            
+    
+
+            except Exception as e:
+                print(f"Something went wrong: {e}")
+   
+
+        
+
 
 def show_menu():
     print("\n" + "="*70)
@@ -182,8 +232,9 @@ def show_menu():
     print("="*70)
     print("\n1. Run Component 1 (KD-tree Optimized Vertex Search)")
     print("2. Run Component 2 (Route Planning Algorithm Comparison)")
-    print("3. Run Both Components")
-    print("4. Exit")
+    print("3. Run Component 3 (Hospital route planning)")
+    print("4. Run Components 1 and 2")
+    print("5. Exit")
     print("\nChoice: ", end="")
 
 def main():
@@ -200,6 +251,8 @@ def main():
         
         elif choice == '2':
             app.component2_demo()
+        elif choice == '3':
+            app.component3_demo()
         
         elif choice == '3':
             app.component1_demo()
@@ -207,15 +260,16 @@ def main():
             print("\n" + "="*70)
             print("BOTH COMPONENTS COMPLETED")
             print("="*70)
+
         
-        elif choice == '4':
+        elif choice == '5':
             print("\n" + "="*70)
             print("Thank you for using Route Planning Application!")
             print("="*70)
             break
         
         else:
-            print("\n✗ Invalid choice. Please try again.")
+            print("\nInvalid choice. Please try again.")
 
 if __name__ == "__main__":
     main()

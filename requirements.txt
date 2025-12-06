@@ -1,7 +1,12 @@
-osmnx
+osmnx>=1.3.0
 numpy
 scipy
 geopy
 networkx
 matplotlib
+geopandas
+shapely
+time
+heapq
+scipy
 simpleai
