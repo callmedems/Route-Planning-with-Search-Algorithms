@@ -113,9 +113,6 @@ class RoutePlanner:
         
         # Grafo proyectado en metros (para Voronoi y A*)
         self.G_proj = ox.project_graph(self.G)
-
-        print(f"Loaded graph with {len(self.G.nodes)} nodes and {len(self.G.edges)} edges")
-        
         self.hospital_coords = HOSPITAL_COORDS 
         self.hospital_nodes = []               
         self.voronoi_regions = []
@@ -130,7 +127,7 @@ class RoutePlanner:
             nearest_node = ox.distance.nearest_nodes(self.G, lon, lat)
             self.hospital_nodes.append(nearest_node)
             node_data = self.G.nodes[nearest_node]
-            print(f"{self.hospital_names[i]}: ({lat:.6f}, {lon:.6f}) -> Node {nearest_node} "
+            print(f" {[i+1]} {self.hospital_names[i]}: ({lat:.6f}, {lon:.6f}) -> Node {nearest_node} "
                   f"({node_data['y']:.6f}, {node_data['x']:.6f})")
             
         print(f"\nMapped {len(self.hospital_nodes)} hospitals to graph nodes")
@@ -402,9 +399,10 @@ def main():
 
     planner = RoutePlanner()
     planner.create_voronoi_partition()
+    planner.create_voronoi_partition()
     planner.visualize_voronoi(figsize=(16,14))
     plt.savefig('voronoi_partition.png', dpi=150, bbox_inches='tight')
-    plt.show()
+    plt.close()
     
 
     #Start program

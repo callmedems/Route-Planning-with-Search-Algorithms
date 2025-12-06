@@ -4,12 +4,9 @@ scipy
 geopy
 networkx
 matplotlib
-<<<<<<< HEAD
 geopandas
 shapely
 time
 heapq
 scipy
-=======
 simpleai
->>>>>>> cbe224d9c616eecf080edff4f464880b98e89f1b
