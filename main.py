@@ -111,14 +111,6 @@ class RouteMapApp:
         long_pairs = select_node_pairs(self.G, 5000, 15000, num_pairs=5)
         long_results = run_experiment(self.G, long_pairs, "LONG DISTANCES (> 5000m)")
         analyze_results(long_results, "LONG")
-        
-        print("\n" + "="*70)
-        print("CONCLUSION")
-        print("="*70)
-        print("A* consistently shows the best performance by:")
-        print("• Finding optimal paths (same length as UCS)")
-        print("• Exploring fewer nodes than uninformed algorithms")
-        print("• Running faster than other optimal algorithms")
     
     def search_nearest_vertex(self, lat, lon):
         """Search for nearest vertex to a given coordinate"""
