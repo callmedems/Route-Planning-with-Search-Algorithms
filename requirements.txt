@@ -6,3 +6,6 @@ networkx
 matplotlib
 geopandas
 shapely
+time
+heapq
+scipy

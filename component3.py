@@ -31,8 +31,25 @@ HOSPITAL_COORDS = [
 
 ]
 
+HOSPITAL_NAMES = [
+    'Sanatorio Belén',
+    'ISSTE Clínica Hospital',
+    'Hospital Puerta Del Mar',
+    'Hospital Premiere CMQ',
+    'Clínica Ángeles',
+    'Healthcare by the sea',
+    'Hospital Multimédica',
+    'Hospital Versalles',
+    'IMSS Zona 42',
+    'Medical Center',
+    'Hospital Joya Marina',
+    'Servicio Médico de La Bahía',
+    'Hospital Regional de Puerto Vallarta',
+    'Hospiten Puerto Vallarta'
+]
 
-def voronoi_finite_polygons_2d(vor, radius=None):
+
+def generate_voro_points(vor, radius=None):
 
     if vor.points.shape[1] != 2:
         raise ValueError("Requires 2D input")
@@ -86,7 +103,7 @@ def voronoi_finite_polygons_2d(vor, radius=None):
         new_regions.append(new_region)
 
     return new_regions, np.asarray(new_vertices)
-class HospitalRoutePlanner:
+class RoutePlanner:
     def __init__(self):
         print("Loading map data...")
     
@@ -102,31 +119,27 @@ class HospitalRoutePlanner:
         self.hospital_coords = HOSPITAL_COORDS 
         self.hospital_nodes = []               
         self.voronoi_regions = []
+        self.hospital_names = HOSPITAL_NAMES
 
-        self._setup_system()
+        self.set_nodes()
 
-    def _setup_system(self):
+    def set_nodes(self):
         print("\nFinding nearest nodes for hospitals")
         
-        for i, (lat, lon) in enumerate(self.hospital_coords, 1):
+        for i, (lat, lon) in enumerate(self.hospital_coords):
             nearest_node = ox.distance.nearest_nodes(self.G, lon, lat)
             self.hospital_nodes.append(nearest_node)
             node_data = self.G.nodes[nearest_node]
-            print(f"Hospital {i+1}: ({lat:.6f}, {lon:.6f}) -> Node {nearest_node} "
+            print(f"{self.hospital_names[i]}: ({lat:.6f}, {lon:.6f}) -> Node {nearest_node} "
                   f"({node_data['y']:.6f}, {node_data['x']:.6f})")
             
         print(f"\nMapped {len(self.hospital_nodes)} hospitals to graph nodes")
     
-    # 2) Voronoi en CRS proyectado
+    #Voronoi in CRS 
     def create_voronoi_partition(self):
-        """
-        Generate Voronoi partition based on hospital locations.
-        Voronoi se hace en el grafo proyectado (metros) y se recorta
-        al bounding box del grafo.
-        """
+
         print("\nCreating Voronoi partition area coverage")
         
-        # Coordenadas en CRS proyectado
         points = np.array([
             [self.G_proj.nodes[node]['x'], self.G_proj.nodes[node]['y']]
             for node in self.hospital_nodes
@@ -134,7 +147,7 @@ class HospitalRoutePlanner:
         
         # Voronoi 
         vor = Voronoi(points)
-        regions, vertices = voronoi_finite_polygons_2d(vor)
+        regions, vertices = generate_voro_points(vor)
         
         # Bounding box 
         nodes_gdf = ox.graph_to_gdfs(self.G_proj, edges=False)
@@ -156,7 +169,7 @@ class HospitalRoutePlanner:
     
     
     #Región Voronoi para un nodo
-    def _get_region_for_node(self, node_id):
+    def setRegionNode(self, node_id):
         x = self.G_proj.nodes[node_id]['x']
         y = self.G_proj.nodes[node_id]['y']
         p = Point(x, y)
@@ -192,7 +205,7 @@ class HospitalRoutePlanner:
         for i, poly in enumerate(self.voronoi_regions):
             if poly.geom_type == "Polygon":
                 x, y = poly.exterior.xy
-                ax.fill(x, y, alpha=0.25, color=colors[i], label=f'Hospital {i+1}')
+                ax.fill(x, y, alpha=0.25, color=colors[i], label=f'{self.hospital_names[i]}')
             elif poly.geom_type == "MultiPolygon":
                 for sub_poly in poly.geoms:
                     x, y = sub_poly.exterior.xy
@@ -209,7 +222,7 @@ class HospitalRoutePlanner:
         plt.tight_layout()
         return fig, ax
     
-    def _astar_search(self, start, goal):
+    def astar(self, start, goal):
 
         def heuristic(node, goal_node):
             x1 = self.G_proj.nodes[node]['x']
@@ -265,25 +278,26 @@ class HospitalRoutePlanner:
         query_node_lat = self.G.nodes[query_node]['y']
         query_node_lon = self.G.nodes[query_node]['x']
         
+
         print(f"\n  Query coordinates: ({query_lat:.6f}, {query_lon:.6f})")
         print(f"  Nearest node: {query_node} at ({query_node_lat:.6f}, {query_node_lon:.6f})")
         
         # Step 2: Determine hospital using Voronoi
         
-        hospital_idx = self._get_region_for_node(query_node)
+        hospital_idx = self.setRegionNode(query_node)
         hospital_node = self.hospital_nodes[hospital_idx]
         
         hospital_lat = self.hospital_coords[hospital_idx][0]
         hospital_lon = self.hospital_coords[hospital_idx][1]
-        
-        print(f"\n Assigned to: HOSPITAL {hospital_idx + 1}")
+        hospital_name = self.hospital_names[hospital_idx]
+        print(f"\n Assigned to HOSPITAL: {hospital_name}")
         print(f" Hospital location: ({hospital_lat:.6f}, {hospital_lon:.6f})")
 
         
         # Step 3: Calculate route with A*
         print(f"\n CALCULATING ROUTE ...")
         start_time = time.time()
-        route, nodes_explored = self._astar_search(query_node, hospital_node)
+        route, nodes_explored = self.astar(query_node, hospital_node)
         astar_time = time.time() - start_time
         
         if route is None:
@@ -345,9 +359,9 @@ class HospitalRoutePlanner:
             
             if i == hospital_idx:
                 # Highlight destination hospital
-                ax.scatter([h_x], [h_y], c='red', s=400, marker='*',
+                ax.scatter([h_x], [h_y], c='red', s=250, marker='*',
                           edgecolors='darkred', linewidths=3, zorder=10,
-                          label=f'DESTINATION: Hospital {i+1}')
+                          label=f'DESTINATION: {self.hospital_names[i]}')
             else:
                 # Other hospitals
                 ax.scatter([h_x], [h_y], c='lightcoral', s=150, marker='+',
@@ -364,12 +378,12 @@ class HospitalRoutePlanner:
         if route:
             start_x = self.G.nodes[query_node]['x']
             start_y = self.G.nodes[query_node]['y']
-            ax.scatter([start_x], [start_y], c='blue', s=300,
+            ax.scatter([start_x], [start_y], c='blue', s=100,
                       marker='o', edgecolors='blue', linewidths=3,
                       label='QUERY LOCATION', zorder=11)
         
         # Title and legend
-        ax.set_title(f'Route to Hospital {hospital_idx + 1}\n'
+        ax.set_title(f'Route to Hospital {self.hospital_names[i]}\n'
                     f'From ({query_lat:.5f}, {query_lon:.5f})',
                     fontsize=16, fontweight='bold', pad=20)
         
@@ -386,7 +400,7 @@ class HospitalRoutePlanner:
 
 def main():
 
-    planner = HospitalRoutePlanner()
+    planner = RoutePlanner()
     planner.create_voronoi_partition()
     planner.visualize_voronoi(figsize=(16,14))
     plt.savefig('voronoi_partition.png', dpi=150, bbox_inches='tight')
